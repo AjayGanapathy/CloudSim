@@ -24,12 +24,21 @@ class AdvancingClouds{
   private int initialVelocityMax = 4;
   private int wrapClamp;
   private int backgroundGray = 210;
-  private int cloudGray = 240;
+  private int cloudGray = 255;
   private float rampConst;
-  private float rampSlope = 1.25;
+  private float rampSlope = 0.75;
+  private PhysicsModel physics;
+  private float forceArray = new float[4];
+  private float forceVelocityX = 0;
+  private float forceVelocityY = 0;
+  private float forcePositionX = 0;
+  private float forcePositionY = 0;  
+  private int inertia = 10;
   
   //constructor goes here
-  AdvancingClouds(int numberOfClouds){
+  AdvancingClouds(int numberOfClouds, PhysicsModel physicsIn){
+    //initialize physics
+    physics = physicsIn;
     //initialize clouds
     cloudArray = new float[numberOfClouds][numberOfProperties];
     for(int cloud=0; cloud<numberOfClouds; cloud++){
@@ -81,6 +90,12 @@ class AdvancingClouds{
   
   //public methods go here
   public void update(){
+    forceArray = physics.getForces();
+    forceVelocityX = forceArray[0];
+    forceVelocityY = forceArray[1]; 
+    forcePositionX = forceArray[2];
+    forcePositionY = forceArray[3];
+    println(forceVelocityX+" "+forceVelocityY+" "+forcePositionX+" "+forcePositionY);
     moveClouds();
     drawClouds();
   }
@@ -136,7 +151,7 @@ class AdvancingClouds{
         oldZIndex= cloudArray[cloud][3];
       };
       //now, start velocity calculations
-      float velocity= cloudArray[cloud][4];
+      float velocity = cloudArray[cloud][4];
       float velocityX;
       float yVelocityWrapAdjustment = (wrapAmount-wrapClamp)/(oldZIndex+20);
       float velocityY = velocity-yVelocityWrapAdjustment;
@@ -160,7 +175,6 @@ class AdvancingClouds{
         velocityY = -1*velocityY;
         velocityX = -1*velocityX;
       };
-      //now, do the force affector calculations
       float newX = oldX+velocityX;
       float newY = oldY+velocityY;
       if(oldRadius>radiusMax){
@@ -169,21 +183,24 @@ class AdvancingClouds{
       else{
         newRadius = oldRadius+(abs(velocityX)+abs(velocityY))/2;
       }
-      
-      cloudArray[cloud][0]=newX;
-      cloudArray[cloud][1]=newY;
+      cloudArray[cloud][0]=newX+forceVelocityX*inertia/(inertia+abs(oldX-forcePositionX));
+      cloudArray[cloud][1]=newY+forceVelocityY*inertia/(inertia+abs(oldY-forcePositionY));
       //increase radius by the amount set by velocity
       cloudArray[cloud][2] = newRadius;
       float newZIndex = oldZIndex+velocity;
       cloudArray[cloud][3]=newZIndex;
-    }
+    };
   }
-  private void drawClouds(){
+  
+  private void drawClouds(){ 
     for(int cloud=0; cloud<cloudArray.length; cloud++){
       float xIn = cloudArray[cloud][0];
       float yIn = cloudArray[cloud][1];
       float rIn = cloudArray[cloud][2];
       float diameter = rIn*2;
+      //now perform force adjustments
+      xIn = xIn;
+      yIn = yIn;
       noStroke();
       fill(rampGray(cloudArray[cloud][3]));
       ellipse(xIn,yIn,diameter,diameter);
